@@ -1,0 +1,367 @@
+---
+title: "ETHPOP"
+author: "Nathan Green, Imperial College London"
+runtime: shiny
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: scroll
+    source_code: embed
+---
+
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(dplyr)
+library(ggplot2)
+library(reshape2)
+library(tibble)
+library(plotly)
+library(rsconnect)
+library(ggthemes)
+# library(gridExtra)
+library(shiny)
+library(knitr)
+
+# data_dir <- "C:/Users/ngreen1/Documents/R/cleanETHPOP/output_data/"
+data_dir <- ""
+```
+
+```{r}
+# readin population data
+clean_births <- read.csv(paste0(data_dir, "clean_births.csv"))
+clean_deaths <- read.csv(paste0(data_dir, "clean_deaths.csv"))
+clean_inmigrants <- read.csv(paste0(data_dir, "clean_inmigrants.csv"))
+clean_outmigrants <- read.csv(paste0(data_dir, "clean_outmigrants.csv"))
+clean_pop <- read.csv(paste0(data_dir, "clean_pop.csv"))
+```
+
+```{r}
+# raw_data_dir <- "C:/Users/ngreen1/Documents/data/"
+raw_data_dir <- ""
+
+# join ethnic group descriptions
+ethnic_grps <- read.csv(paste0(raw_data_dir, "ETHPOP_ethnicgrps_Chapter18_PopulationProjections_Reese.csv"))
+
+clean_births <- merge(clean_births, ethnic_grps,
+                      by.x = "ETH.group",
+                      by.y = "abbreviation")
+clean_deaths <- merge(clean_deaths, ethnic_grps,
+                      by.x = "ETH.group",
+                      by.y = "abbreviation")
+clean_pop <- merge(clean_pop, ethnic_grps,
+                   by.x = "ETH.group",
+                   by.y = "abbreviation")
+```
+
+Absolute numbers
+=======================================================================
+
+Column {data-width=500}
+-----------------------------------------------------------------------
+
+### Births by ethnic group  over time
+
+```{r}
+p <-
+  clean_births %>%
+  select(-X) %>%
+  melt(id.vars = c("description", "year")) %>%
+  as_tibble() %>%
+  filter(variable == "tot_births") %>%
+  mutate(description = as.factor(description),
+         value = as.numeric(value)) %>%
+  ggplot(mapping = aes(x = year, y = value, col = description)) +
+  geom_line() +
+  xlab("Year") + ylab("Population") +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+ggplotly(p) %>%
+  layout(legend = list(orientation = "h", x = 0.4, y = -0.35))
+```
+
+
+### In-migration
+
+```{r}
+renderPlotly({
+  p <-
+    clean_inmigrants %>%
+    select(-X) %>%
+    as_tibble() %>%
+    filter(sex == input$sex,
+           year == as.numeric(input$year)) %>%
+    mutate(description = as.factor(ETH.group),
+           pop = as.numeric(inmigrants),
+           age = as.numeric(age)) %>%
+    ggplot(mapping = aes(x = age, y = pop, col = description, group = description)) +
+    geom_line() +
+    geom_point() +
+    xlab("Age") + ylab("Population") +
+    theme_gdocs() +
+    theme(axis.text = element_text(size = 7),
+          axis.text.x = element_text(angle = 60, hjust = 1))
+  
+  ggplotly(p)
+})
+```
+
+
+Column {data-width=500}
+-----------------------------------------------------------------------
+
+```{r}
+fluidPage(
+  fluidRow(
+    column(5, selectInput("year",
+                          label = "Year: ",
+                          choices = 2011:2060,
+                          selected = 2011)),
+    column(5, radioButtons("sex", "Sex: ",
+                           c("Male" = "M",
+                             "Female" = "F"),
+                           inline = TRUE))
+  ))
+```
+
+
+### Deaths by ethnic group, age groups and year
+
+```{r}
+renderPlotly({
+  p <-
+    clean_deaths %>%
+    select(-X) %>%
+    mutate(agegrp = factor(agegrp,
+                           levels = c("[0,5)",   "[5,10)",  "[10,15)", "[15,20)", "[20,25)", "[25,30)",
+                                      "[30,35)", "[35,40)", "[40,45)", "[45,50)", "[50,55)", "[55,60)",
+                                      "[60,65)", "[65,70)", "[70,75)", "[75,80)", "[80,85)", "[85,90)",
+                                      "[90,95)", "[95,100)", "[100,105)"))) %>%
+    as_tibble() %>%
+    filter(sex == input$sex,
+           year == as.numeric(input$year)) %>%
+    mutate(description = as.factor(ETH.group),
+           deaths = as.numeric(deaths)) %>%
+    ggplot(mapping = aes(x = agegrp, y = deaths, col = description, group = description)) +
+    geom_line() +
+    geom_point() +
+    xlab("Age") + ylab("Population") +
+    theme_gdocs() +
+    theme(axis.text = element_text(size = 7),
+          axis.text.x = element_text(angle = 60, hjust = 1))
+  
+  ggplotly(p)
+})
+```
+
+### Population stock in England
+
+```{r}
+renderPlotly({
+  p <-
+    clean_pop %>%
+    select(-X) %>%
+    as_tibble() %>%
+    filter(sex == input$sex,
+           year == as.numeric(input$year)) %>%
+    mutate(description = as.factor(ETH.group),
+           pop = as.numeric(pop),
+           age = as.numeric(age)) %>%
+    ggplot(mapping = aes(x = age, y = pop, col = description, group = description)) +
+    geom_line() +
+    geom_point() +
+    xlab("Age") + ylab("Population") +
+    theme_gdocs() +
+    theme(axis.text = element_text(size = 7),
+          axis.text.x = element_text(angle = 60, hjust = 1))
+  
+  ggplotly(p)
+})
+```
+
+
+### Out-migration
+
+```{r}
+renderPlotly({
+  p <-
+    clean_outmigrants %>%
+    select(-X) %>%
+    as_tibble() %>%
+    filter(sex == input$sex,
+           year == as.numeric(input$year)) %>%
+    mutate(description = as.factor(ETH.group),
+           pop = as.numeric(outmigrants),
+           age = as.numeric(age)) %>%
+    ggplot(mapping = aes(x = age, y = pop, col = description, group = description)) +
+    geom_line() +
+    geom_point() +
+    xlab("Age") + ylab("Population") +
+    theme_gdocs() +
+    theme(axis.text = element_text(size = 7),
+          axis.text.x = element_text(angle = 60, hjust = 1))
+  
+  ggplotly(p)
+})
+```
+
+
+Per-capita
+=======================================================================
+
+Column {data-width=500}
+-----------------------------------------------------------------------
+
+### Births by ethnic group  over time {data-padding=80}
+
+```{r}
+fluidPage(
+  fluidRow(
+    column(5, radioButtons("denom", "Denominator: ",
+                           c("All" = "all",
+                             "Female" = "F"),
+                           inline = TRUE)),
+        column(5, radioButtons("interval", "Age range: ",
+                           c("All" = "all",
+                             "15-45" = "1545"),
+                           inline = TRUE))
+  ))
+```
+
+```{r}
+renderPlotly({
+  p <-
+    clean_births %>%
+    select(-X) %>%
+    melt(id.vars = c("description", "year")) %>%
+    as_tibble() %>%
+    filter(variable == "tot_births") %>%
+    mutate(description = as.factor(description),
+           value = as.numeric(value))
+  
+  if (input$interval == "1545") {
+    clean_pop <-
+      clean_pop %>% 
+      filter(age >= 15 & age <= 45)
+  }
+  
+  q <-
+    clean_pop %>% 
+    filter(sex == input$denom | input$denom == "all") %>%
+    group_by(description, year) %>% 
+    summarise(total_pop = sum(pop)) %>% 
+    merge(p, by = c("year", "description")) %>% 
+    mutate(births_per_capita = value/total_pop) %>% 
+    ggplot(mapping = aes(x = year, y = births_per_capita, col = description)) +
+    geom_line() +
+    xlab("Year") + ylab("Population") +
+    theme_bw()
+  
+  ggplotly(q)
+})
+```
+
+### Out-migration
+
+```{r}
+renderPlotly({
+  p <-
+    clean_outmigrants %>%
+    select(-X) %>%
+    as_tibble() %>%
+    filter(sex == input$sex2,
+           year == as.numeric(input$year2)) %>%
+    mutate(ETH_fac = as.factor(ETH.group),
+           outmigrants = as.numeric(outmigrants),
+           age = as.numeric(age))
+  
+  q <- 
+    clean_pop %>% 
+    merge(p, by = c("sex", "age", "ETH.group", "year")) %>% 
+    mutate(outmigrants_per_capita = outmigrants/pop) %>% 
+    ggplot(mapping = aes(x = age, y = outmigrants_per_capita,
+                         col = ETH_fac, group = ETH_fac)) +
+    geom_line() +
+    geom_point() +
+    xlab("Age") + ylab("Population") +
+    theme_gdocs() +
+    theme(axis.text = element_text(size = 7),
+          axis.text.x = element_text(angle = 60, hjust = 1))
+  
+  ggplotly(q)
+})
+```
+
+
+Column {data-width=500}
+-----------------------------------------------------------------------
+
+```{r}
+fluidPage(
+  fluidRow(
+    column(5, selectInput("year2",
+                          label = "Year: ",
+                          choices = 2011:2060,
+                          selected = 2011)),
+    column(5, radioButtons("sex2", "Sex: ",
+                           c("Male" = "M",
+                             "Female" = "F"),
+                           inline = TRUE))
+  ))
+```
+
+
+### Deaths by ethnic group, age groups and year
+
+```{r}
+renderPlotly({
+  p <-
+    clean_deaths %>%
+    select(-X) %>%
+    mutate(agegrp = factor(agegrp,
+                           levels = c("[0,5)",   "[5,10)",  "[10,15)", "[15,20)", "[20,25)", "[25,30)",
+                                      "[30,35)", "[35,40)", "[40,45)", "[45,50)", "[50,55)", "[55,60)",
+                                      "[60,65)", "[65,70)", "[70,75)", "[75,80)", "[80,85)", "[85,90)",
+                                      "[90,95)", "[95,100)", "[100,105)"))) %>%
+    as_tibble() %>%
+    filter(sex == input$sex2,
+           year == as.numeric(input$year2)) %>%
+    mutate(description = as.factor(ETH.group),
+           deaths = as.numeric(deaths)) %>%
+    ggplot(mapping = aes(x = agegrp, y = deaths, col = description, group = description)) +
+    geom_line() +
+    geom_point() +
+    xlab("Age") + ylab("Population") +
+    theme_gdocs() +
+    theme(axis.text = element_text(size = 7),
+          axis.text.x = element_text(angle = 60, hjust = 1))
+  
+  ggplotly(p)
+})
+```
+
+### Population stock in England
+
+```{r}
+renderPlotly({
+  p <-
+    clean_pop %>%
+    select(-X) %>%
+    as_tibble() %>%
+    filter(sex == input$sex2,
+           year == as.numeric(input$year2)) %>%
+    mutate(description = as.factor(ETH.group),
+           pop = as.numeric(pop),
+           age = as.numeric(age)) %>%
+    ggplot(mapping = aes(x = age, y = pop, col = description, group = description)) +
+    geom_line() +
+    geom_point() +
+    xlab("Age") + ylab("Population") +
+    theme_gdocs() +
+    theme(axis.text = element_text(size = 7),
+          axis.text.x = element_text(angle = 60, hjust = 1))
+  
+  ggplotly(p)
+})
+```

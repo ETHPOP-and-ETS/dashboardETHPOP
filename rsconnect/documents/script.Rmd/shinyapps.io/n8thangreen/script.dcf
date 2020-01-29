@@ -1,0 +1,12 @@
+name: script
+title: script
+username:
+account: n8thangreen
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 1715468
+bundleId: 2758877
+url: https://n8thangreen.shinyapps.io/script/
+when: 1580230193.87908
+asMultiple: FALSE
+asStatic: FALSE

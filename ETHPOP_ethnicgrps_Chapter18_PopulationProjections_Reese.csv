@@ -1,0 +1,13 @@
+abbreviation,description,broad_grouping,fig_groups
+WBI,"White: British, Irish, Gypsy, Irish Traveller",White,WBR+WIR
+WHO,White: Other White,White,WHO
+MIX,Mixed or Multiple Ethnic Groups,Mixed,WBA+WBC+WAS+OMI
+IND,Asian or Asian British: Indian,Asian,IND
+PAK,Asian or Asian British: Pakistani,Asian,PAK
+BAN,Asian or Asian British: Bangladeshi,Asian,BAN
+CHI,Asian or Asian British: Chinese,Asian,CHI
+OAS,Asian or Asian British: Other Asian,Asian,OAS
+BLA,Black or Black British: African,Black,BLA
+BLC,Black or Black British: Black Caribbean,Black,BLC
+OBL,Black or Black British: Other,Black,OBL
+OTH,Other Ethnic Group,Other,OAT
